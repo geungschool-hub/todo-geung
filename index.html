@@ -34,6 +34,7 @@
       --blue:      #3a6ea5;
       --blue-bg:   #e8f0f9;
       --shadow:    0 1px 3px rgba(30,40,60,.08), 0 6px 20px rgba(30,40,60,.06);
+      --overdue-glow: 192,73,47;
       --radius:    14px;
     }
     [data-theme="dark"] {
@@ -55,6 +56,7 @@
       --blue:      #79a6d8;
       --blue-bg:   #1f2c3b;
       --shadow:    0 1px 3px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
+      --overdue-glow: 235,140,118;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -192,6 +194,16 @@
     .task.cat-수업·평가 { border-left-color: var(--blue); }
     .task.cat-학생기록 { border-left-color: var(--amber); }
     .task.cat-학급운영 { border-left-color: var(--green); }
+
+    /* 밀린 일 표지 — 부드럽게 빛나며 깜빡이는 글로우 */
+    .task.overdue-week { border-left-color: var(--red); animation: overdueGlow 2.1s ease-in-out infinite; }
+    @keyframes overdueGlow {
+      0%, 100% { box-shadow: var(--shadow), 0 0 4px rgba(var(--overdue-glow), .15); }
+      50%      { box-shadow: var(--shadow), 0 0 17px 1px rgba(var(--overdue-glow), .6); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .task.overdue-week { animation: none; box-shadow: var(--shadow), 0 0 13px rgba(var(--overdue-glow), .5); }
+    }
 
     .check {
       flex: none; width: 24px; height: 24px; margin-top: 1px;
@@ -720,7 +732,8 @@
 
     function renderTask(t) {
       const el = document.createElement("div");
-      el.className = "task cat-" + t.category + (t.status === "done" ? " done" : "");
+      el.className = "task cat-" + t.category + (t.status === "done" ? " done" : "") +
+        (isOverdueWeek(t) ? " overdue-week" : "");
 
       const check = document.createElement("div");
       check.className = "check";
