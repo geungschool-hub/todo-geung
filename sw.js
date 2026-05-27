@@ -2,7 +2,7 @@
 // 앱 셸을 캐시해 오프라인 동작과 빠른 재실행을 지원합니다.
 // 데이터는 모두 브라우저 localStorage에만 있으며, SW는 어떤 데이터도 외부로 전송하지 않습니다.
 
-const CACHE = "todo-geung-v1";
+const CACHE = "todo-geung-v2";
 const SHELL = [
   "./",
   "./index.html",

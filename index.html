@@ -175,6 +175,13 @@
     .week-rel.now  { background: var(--green-bg); color: var(--green); }
     .week-rel.soon { background: var(--blue-bg);  color: var(--blue); }
     .week-rel.past { background: var(--line-soft); color: var(--muted); }
+    .group-title.danger { color: var(--red); }
+    .pull-btn {
+      margin-top: 9px; display: inline-flex; align-items: center; gap: 4px;
+      border: 1.5px solid var(--amber); background: var(--amber-bg); color: var(--amber);
+      font-size: 12.5px; font-weight: 700; padding: 8px 12px; border-radius: 9px; cursor: pointer;
+    }
+    .pull-btn:active { filter: brightness(.95); }
 
     .task {
       display: flex; align-items: flex-start; gap: 11px;
@@ -611,6 +618,22 @@
       return t.status !== "done" && n !== null && n <= 3;
     }
 
+    // 지난 주(끝난 주차)인데 아직 안 끝낸 항목 = 밀린 일
+    function isOverdueWeek(t) {
+      if (t.status === "done") return false;
+      const r = weekRel(t.weekTag);
+      return r !== null && r.cls === "past";
+    }
+
+    // 이번 주 월~일 범위를 주차 태그 형식("M/D~M/D")으로 생성
+    function currentWeekTag() {
+      const mon = startOfWeek();
+      const sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      const f = (d) => (d.getMonth() + 1) + "/" + d.getDate();
+      return f(mon) + "~" + f(sun);
+    }
+
     // 검색어 안전 하이라이트 (innerHTML 미사용 → XSS 안전)
     function fillHighlight(el, text, query) {
       el.textContent = "";
@@ -668,14 +691,23 @@
           .map((c) => ({ label: c, items: sortTasks(active.filter((t) => t.category === c)) }))
           .filter((g) => g.items.length);
       }
-      // week
-      const tags = [...new Set(active.map((t) => t.weekTag || ""))]
+      // week — 지난 주 미완료(밀린 일)는 맨 위 그룹으로 자동 분리
+      const overdue = active.filter(isOverdueWeek);
+      const rest = active.filter((t) => !isOverdueWeek(t));
+      const groups = [];
+      if (overdue.length) {
+        groups.push({ label: "⚠️ 밀린 일", danger: true, items: sortTasks(overdue) });
+      }
+      const tags = [...new Set(rest.map((t) => t.weekTag || ""))]
         .sort((a, b) => weekSortKey(a) - weekSortKey(b));
-      return tags.map((tag) => ({
-        label: tag || "주차 미지정",
-        rel: weekRel(tag),
-        items: sortTasks(active.filter((t) => (t.weekTag || "") === tag)),
-      }));
+      tags.forEach((tag) => {
+        groups.push({
+          label: tag || "주차 미지정",
+          rel: weekRel(tag),
+          items: sortTasks(rest.filter((t) => (t.weekTag || "") === tag)),
+        });
+      });
+      return groups;
     }
 
     // ============ 렌더 ============
@@ -732,6 +764,14 @@
         body.appendChild(fs);
       }
 
+      if (isOverdueWeek(t)) {
+        const pull = document.createElement("button");
+        pull.className = "pull-btn";
+        pull.textContent = "⏩ 이번 주로 당기기";
+        pull.addEventListener("click", (e) => { e.stopPropagation(); pullToThisWeek(t.id); });
+        body.appendChild(pull);
+      }
+
       el.append(check, body);
       return el;
     }
@@ -757,7 +797,7 @@
       const groups = buildGroups(active);
       groups.forEach((g) => {
         const h = document.createElement("div");
-        h.className = "group-title";
+        h.className = "group-title" + (g.danger ? " danger" : "");
         h.appendChild(document.createTextNode(g.label));
         const cnt = document.createElement("span");
         cnt.className = "count";
@@ -838,6 +878,14 @@
       save();
       input.value = "";
       input.focus();
+      render();
+    }
+
+    function pullToThisWeek(id) {
+      const t = state.tasks.find((x) => x.id === id);
+      if (!t) return;
+      t.weekTag = currentWeekTag();
+      save();
       render();
     }
 
